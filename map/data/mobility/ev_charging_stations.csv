@@ -1,0 +1,8 @@
+name,lat,lon,connector_type,power_kw,operator,source,notes
+Chora Town Center Charger,36.5492,26.3700,Type2,22,astyMOVE / Mer,astyMOVE project documentation,Central location in island capital
+Livadia Port Charger,36.5432,26.3502,Type2,22,astyMOVE / Mer,astyMOVE project documentation,Near ferry dock for arriving EVs
+Airport Charger,36.5718,26.3760,CCS / Type2,50,astyMOVE / Mer,astyMOVE project documentation; confirmed OSM,Fast charger at Astypalea Airport (ICAO: LGPL)
+Analipsi / Maltezana Charger,36.5538,26.5298,Type2,22,astyMOVE / Mer,astyMOVE project documentation,Eastern settlement; near solar park
+Vathi Charger,36.5350,26.4100,Type2,11,astyMOVE / Mer,astyMOVE project documentation,Small settlement; 11 kW AC
+Pera Gialos Charger,36.5460,26.3610,Type2,22,astyMOVE / Mer,astyMOVE project documentation,Port area charger
+Astypalea Hotel Area Charger,36.5500,26.3720,Type2,11,astyMOVE / Mer,Estimated from project deployment docs,Tourist accommodation area

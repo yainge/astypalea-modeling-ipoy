@@ -1,0 +1,13 @@
+{
+"type": "FeatureCollection",
+"name": "substations_clean",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "Chora Central Substation", "lat": 36.5492, "lon": 26.37, "voltage_kv": 20, "capacity_mva": 2.5, "serves": "Chora (island capital)", "source": "Estimated from HEDNO island grid literature", "notes": "Main distribution hub near diesel plant" }, "geometry": { "type": "Point", "coordinates": [ 26.37, 36.5492 ] } },
+{ "type": "Feature", "properties": { "name": "Livadia Substation", "lat": 36.5432, "lon": 26.3502, "voltage_kv": 20, "capacity_mva": 1.0, "serves": "Livadia settlement and port", "source": "Estimated from island grid topology", "notes": "Serves western coastal area" }, "geometry": { "type": "Point", "coordinates": [ 26.3502, 36.5432 ] } },
+{ "type": "Feature", "properties": { "name": "Analipsi Substation", "lat": 36.5538, "lon": 26.5298, "voltage_kv": 20, "capacity_mva": 1.5, "serves": "Analipsi / Maltezana", "source": "Estimated from island grid topology", "notes": "Serves eastern settlements; near solar park" }, "geometry": { "type": "Point", "coordinates": [ 26.5298, 36.5538 ] } },
+{ "type": "Feature", "properties": { "name": "Airport Substation", "lat": 36.5718, "lon": 26.376, "voltage_kv": 20, "capacity_mva": 0.5, "serves": "Airport and northern tip", "source": "Estimated from HEDNO literature", "notes": "Serves airport and surrounding area" }, "geometry": { "type": "Point", "coordinates": [ 26.376, 36.5718 ] } },
+{ "type": "Feature", "properties": { "name": "Vathi Substation", "lat": 36.535, "lon": 26.41, "voltage_kv": 20, "capacity_mva": 0.5, "serves": "Vathi bay area", "source": "Estimated from island grid topology", "notes": "Small settlement; seasonal load" }, "geometry": { "type": "Point", "coordinates": [ 26.41, 36.535 ] } },
+{ "type": "Feature", "properties": { "name": "Pera Gialos Substation", "lat": 36.546, "lon": 26.361, "voltage_kv": 20, "capacity_mva": 0.75, "serves": "Pera Gialos port", "source": "Estimated from island grid topology", "notes": "Serves port facilities and nearby area" }, "geometry": { "type": "Point", "coordinates": [ 26.361, 36.546 ] } }
+]
+}

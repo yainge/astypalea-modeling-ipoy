@@ -1,0 +1,14 @@
+road_name,osm_highway_type,summer_congestion,winter_congestion,notes
+Chora-Analipsi Main Road,primary,0.85,0.20,Island's only arterial; documented summer bottleneck
+Chora-Airport Road,primary,0.70,0.15,Access to airport; high summer traffic
+Livadia Access Road,secondary,0.60,0.10,Port and beach access
+Chora Local Streets,residential,0.50,0.20,Town center; pedestrian/EV mix
+Analipsi Local Roads,secondary,0.55,0.10,Eastern settlement
+Vathi Track,track,0.20,0.05,Unpaved; very low traffic
+Coastal Scenic Road,tertiary,0.40,0.08,Tourist route; moderate summer use
+DEFAULT_primary,primary,0.65,0.15,Default for unmapped primary roads
+DEFAULT_secondary,secondary,0.45,0.10,Default for unmapped secondary roads
+DEFAULT_tertiary,tertiary,0.30,0.07,Default for unmapped tertiary roads
+DEFAULT_residential,residential,0.35,0.15,Default for unmapped residential roads
+DEFAULT_track,track,0.15,0.04,Default for unmapped tracks
+DEFAULT_unclassified,unclassified,0.25,0.08,Default for unmapped unclassified roads

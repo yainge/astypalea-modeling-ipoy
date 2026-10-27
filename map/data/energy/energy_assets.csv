@@ -1,0 +1,5 @@
+name,type,lat,lon,capacity_mw,capacity_mwh,status,source,notes
+PPC Solar Park (Maltezana),solar_pv,36.5548,26.5305,3.5,,operational,PPC Renewables press release Apr 2022,Bifacial panels; 6000 units; expected 6.55 GWh/year
+Battery Energy Storage (Maltezana),battery,36.5548,26.5305,,14.12,operational,PPC Renewables press release Apr 2022,Paired with solar park
+Existing PV Installation,solar_pv,36.5492,26.3708,0.32,,operational,HEDNO research 2019 / Aalborg MSc thesis 2019,8-9% of island consumption pre-2022
+Diesel Thermal Plant,diesel_thermal,36.5490,26.3685,4.5,,operational,Estimated from HEDNO literature / island grid topology,Primary baseload generation; exact position approximate

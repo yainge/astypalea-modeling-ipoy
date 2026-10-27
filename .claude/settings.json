@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod +x /Users/yukiainge/Dev/astypalea-modeling-ipoy/ipoy/scripts/run_all.sh)"
+    ]
+  }
+}

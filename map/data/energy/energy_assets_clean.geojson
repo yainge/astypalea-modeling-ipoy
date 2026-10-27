@@ -1,0 +1,11 @@
+{
+"type": "FeatureCollection",
+"name": "energy_assets_clean",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "PPC Solar Park (Maltezana)", "type": "solar_pv", "lat": 36.5548, "lon": 26.5305, "capacity_mw": 3.5, "capacity_mwh": null, "status": "operational", "source": "PPC Renewables press release Apr 2022", "notes": "Bifacial panels; 6000 units; expected 6.55 GWh/year" }, "geometry": { "type": "Point", "coordinates": [ 26.5305, 36.5548 ] } },
+{ "type": "Feature", "properties": { "name": "Battery Energy Storage (Maltezana)", "type": "battery", "lat": 36.5548, "lon": 26.5305, "capacity_mw": null, "capacity_mwh": 14.12, "status": "operational", "source": "PPC Renewables press release Apr 2022", "notes": "Paired with solar park" }, "geometry": { "type": "Point", "coordinates": [ 26.5305, 36.5548 ] } },
+{ "type": "Feature", "properties": { "name": "Existing PV Installation", "type": "solar_pv", "lat": 36.5492, "lon": 26.3708, "capacity_mw": 0.32, "capacity_mwh": null, "status": "operational", "source": "HEDNO research 2019 / Aalborg MSc thesis 2019", "notes": "8-9% of island consumption pre-2022" }, "geometry": { "type": "Point", "coordinates": [ 26.3708, 36.5492 ] } },
+{ "type": "Feature", "properties": { "name": "Diesel Thermal Plant", "type": "diesel_thermal", "lat": 36.549, "lon": 26.3685, "capacity_mw": 4.5, "capacity_mwh": null, "status": "operational", "source": "Estimated from HEDNO literature / island grid topology", "notes": "Primary baseload generation; exact position approximate" }, "geometry": { "type": "Point", "coordinates": [ 26.3685, 36.549 ] } }
+]
+}

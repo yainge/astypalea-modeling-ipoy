@@ -1,0 +1,7 @@
+name,lat,lon,voltage_kv,capacity_mva,serves,source,notes
+Chora Central Substation,36.5492,26.3700,20,2.5,Chora (island capital),Estimated from HEDNO island grid literature,Main distribution hub near diesel plant
+Livadia Substation,36.5432,26.3502,20,1.0,Livadia settlement and port,Estimated from island grid topology,Serves western coastal area
+Analipsi Substation,36.5538,26.5298,20,1.5,Analipsi / Maltezana,Estimated from island grid topology,Serves eastern settlements; near solar park
+Airport Substation,36.5718,26.3760,20,0.5,Airport and northern tip,Estimated from HEDNO literature,Serves airport and surrounding area
+Vathi Substation,36.5350,26.4100,20,0.5,Vathi bay area,Estimated from island grid topology,Small settlement; seasonal load
+Pera Gialos Substation,36.5460,26.3610,20,0.75,Pera Gialos port,Estimated from island grid topology,Serves port facilities and nearby area

@@ -1,0 +1,11 @@
+folium==0.19.7
+branca==0.8.1
+geopandas==1.0.1
+osmnx==2.0.1
+overpy==0.7
+pyproj==3.7.2
+shapely==2.1.2
+pandas==2.2.3
+numpy==2.2.0
+requests==2.32.3
+tqdm==4.67.1

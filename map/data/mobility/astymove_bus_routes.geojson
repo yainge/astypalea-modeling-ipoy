@@ -1,0 +1,40 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "route_name": "astyBUS Main Line",
+        "operator": "astyMOVE / SEAT:CODE Giravolta",
+        "vehicle": "SEAT ID.Buzz Electric Minibus",
+        "stops": "Airport → Chora → Livadia → Pera Gialos → Analipsi/Maltezana",
+        "frequency": "Seasonal (summer daily, winter reduced)",
+        "source": "astyMOVE project documentation / Interreg Europe good practice report"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [26.3760, 36.5718],
+          [26.3740, 36.5680],
+          [26.3720, 36.5600],
+          [26.3700, 36.5492],
+          [26.3610, 36.5460],
+          [26.3502, 36.5432],
+          [26.3540, 36.5445],
+          [26.3600, 36.5460],
+          [26.3700, 36.5492],
+          [26.3800, 36.5480],
+          [26.3900, 36.5470],
+          [26.4100, 36.5350],
+          [26.4300, 36.5330],
+          [26.4500, 36.5370],
+          [26.4700, 36.5400],
+          [26.4900, 36.5430],
+          [26.5100, 36.5470],
+          [26.5200, 36.5490],
+          [26.5298, 36.5538]
+        ]
+      }
+    }
+  ]
+}
