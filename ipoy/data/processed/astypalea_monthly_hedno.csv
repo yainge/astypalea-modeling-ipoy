@@ -1,0 +1,41 @@
+year,month,bulletin_date,thermal_gen_mwh,res_gen_mwh,total_gen_mwh,res_share_pct,avg_prod_cost_eur_mwh,peak_load_mw,installed_capacity_mw,source_bulletin,table_number,page,notes
+2025,,,,,,,,,0.0,Pliroforiako-Deltio-2025-Dekemvrios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,28.79,7.24,7.24,845.31,2.55,5.1,Pliroforiako-Deltio-2025-Dekemvrios.pdf,16,13,DUPLICATE_ENTRY
+2025,,,,,,,,,0.0,Pliroforiako-Deltio-2025-Noemvrios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,37.12,10.3,10.3,779.45,2.55,5.1,Pliroforiako-Deltio-2025-Noemvrios.pdf,16,13,DUPLICATE_ENTRY
+2025,,,,,,,,,0.0,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΑΥΓΟΥΣΤΟΣ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,58.74,4.95,4.95,417.32,2.55,5.1,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΑΥΓΟΥΣΤΟΣ.pdf,16,13,DUPLICATE_ENTRY
+2025,,,,,,,,,0.0,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΙΟΥΛΙΟΣ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,62.58,5.71,5.71,524.56,2.55,5.1,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΙΟΥΛΙΟΣ.pdf,16,13,DUPLICATE_ENTRY
+2025,,,,,,,,,0.0,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΙΟΥΝΙΟΣ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,65.51,9.3,9.3,535.73,2.55,5.1,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΙΟΥΝΙΟΣ.pdf,16,13,DUPLICATE_ENTRY
+2025,,,,,,,,,0.0,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΜΑΪΟΣ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,59.97,13.11,13.11,972.1,2.55,5.1,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΜΑΪΟΣ.pdf,16,13,DUPLICATE_ENTRY
+2025,,,,,,,,,0.0,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΟΚΤΩΒΡΙΟΣ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,48.75,10.85,10.85,743.71,2.55,5.1,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΟΚΤΩΒΡΙΟΣ.pdf,16,13,DUPLICATE_ENTRY
+2025,,,,,,,,,0.0,πληροφοριακο-δελτιο-2025-03-μαρτιοσ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,52.1,12.06,12.06,675.95,2.55,5.1,πληροφοριακο-δελτιο-2025-03-μαρτιοσ.pdf,16,13,DUPLICATE_ENTRY
+2025,,,,,,,,,0.0,πληροφοριακο-δελτιο-2025-04-απριλιοσ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,,,5.1,56.58,12.97,12.97,715.73,2.55,5.1,πληροφοριακο-δελτιο-2025-04-απριλιοσ.pdf,16,13,DUPLICATE_ENTRY
+2025,1,1/2025,,,,,,,0.0,πληροφοριακο-δελτιο-2025-01-ιανουαριοσ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,1,1/2025,5.1,36.37,9.05,9.05,274.79,2.55,5.1,πληροφοριακο-δελτιο-2025-01-ιανουαριοσ.pdf,16,13,DUPLICATE_ENTRY
+2025,2,2/2025,,,,,,,0.0,πληροφοριακο-δελτιο-2025-02-φεβρουαριοσ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,2,2/2025,5.1,34.34,7.29,7.29,515.52,2.55,5.1,πληροφοριακο-δελτιο-2025-02-φεβρουαριοσ.pdf,16,13,DUPLICATE_ENTRY
+2025,9,9/2025,,,,,,,0.0,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΣΕΠΤΕΜΒΡΙΟΣ.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2025,9,9/2025,5.1,54.67,7.37,7.37,496.66,2.55,5.1,ΠΛΗΡΟΦΟΡΙΑΚΟ-ΔΕΛΤΙΟ-2025-ΣΕΠΤΕΜΒΡΙΟΣ.pdf,16,13,DUPLICATE_ENTRY
+2026,,,,,,,,,0.0,Pliroforiako-Deltio-2026-Aprilios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2026,,,5.1,47.98,11.51,11.51,856.99,2.51,5.1,Pliroforiako-Deltio-2026-Aprilios.pdf,16,13,DUPLICATE_ENTRY
+2026,,,,,,,,,0.0,Pliroforiako-Deltio-2026-Avgoustos.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2026,,,5.1,62.21,4.72,4.72,407.16,2.51,5.1,Pliroforiako-Deltio-2026-Avgoustos.pdf,16,13,DUPLICATE_ENTRY
+2026,,,,,,,,,0.0,Pliroforiako-Deltio-2026-Ioulios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2026,,,5.1,63.71,5.45,5.45,382.62,2.51,5.1,Pliroforiako-Deltio-2026-Ioulios.pdf,14,13,DUPLICATE_ENTRY
+2026,,,,,,,,,0.0,Pliroforiako-Deltio-2026-Iounios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2026,,,5.1,65.5,8.99,8.99,737.39,2.51,5.1,Pliroforiako-Deltio-2026-Iounios.pdf,16,13,DUPLICATE_ENTRY
+2026,,,,,,,,,0.0,Pliroforiako-Deltio-2026-Maios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2026,,,5.1,59.56,11.6,11.6,620.53,2.51,5.1,Pliroforiako-Deltio-2026-Maios.pdf,14,13,DUPLICATE_ENTRY
+2026,,,,,,,,,0.0,Pliroforiako-Deltio-2026-Martios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2026,,,5.1,45.6,10.43,10.43,414.48,2.51,5.1,Pliroforiako-Deltio-2026-Martios.pdf,16,13,DUPLICATE_ENTRY
+2026,1,1/2026,,,,,,,0.0,Pliroforiako-Deltio-2026-Ianouarios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2026,1,1/2026,5.1,29.94,6.78,6.78,698.39,2.51,5.1,Pliroforiako-Deltio-2026-Ianouarios.pdf,16,13,DUPLICATE_ENTRY
+2026,2,2/2026,,,,,,,0.0,Pliroforiako-Deltio-2026-Fevrouarios.pdf,3,5,"MISSING_COLS:['thermal_gen_mwh', 'res_gen_mwh', 'res_share_pct'] DUPLICATE_ENTRY"
+2026,2,2/2026,5.1,35.89,9.13,9.13,638.02,2.51,5.1,Pliroforiako-Deltio-2026-Fevrouarios.pdf,16,13,DUPLICATE_ENTRY
