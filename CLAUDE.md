@@ -1,12 +1,27 @@
 # CLAUDE.md
 
+
+
+## Note on CLAUDE.md
+
+CLAUDE.md describes the intended design, not verified behaviour. Three parts are known to be unreliable until checked in Phase 1:
+
+- Section classification by page headings is the approach that failed (all files ended up as `unknown`). Do not treat it as a fixed design decision. The fix in Phase 2 is to classify by filename pattern.
+- The cell colours (maintenance = yellow, fault = red) are unverified. Confirm them with `--rects` and the rendered PNGs before using them.
+- The output files it lists may not exist yet. Check `data/processed/` before assuming any of them do.
+  Update CLAUDE.md in Phase 5 so it matches what the code actually does after the fixes.
+- 
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Repo Structure
 
-Two independent sub-projects:
+Two independent sub-projects with separate virtualenvs and requirements files:
+
 - `map/` — Interactive Astypalea energy & mobility map (Python/Folium → HTML)
-- `ipoy/` — iPOY yearly island energy system modeling (placeholder, not yet implemented)
+- `ipoy/` — HEDNO data pipeline producing hourly CSV datasets + scenario model (placeholder)
+
+Do not touch `map/` when working in `ipoy/` and vice versa.
 
 ---
 
@@ -47,11 +62,11 @@ fetch_osm.py  →  build_energy_data.py
 
 ### Data tiers
 
-| Tier | Description | Examples |
-|------|-------------|---------|
-| 1 – Real, exact | From OSM; exact positions | Boundary, roads, airport |
-| 2 – Real values, ~position | From PPC/HEDNO press releases; ±200m position | Solar park, diesel plant |
-| 3 – Modeled | Estimated from published figures | Demand zones, road congestion |
+| Tier                        | Description                                    | Examples                      |
+| --------------------------- | ---------------------------------------------- | ----------------------------- |
+| 1 – Real, exact            | From OSM; exact positions                      | Boundary, roads, airport      |
+| 2 – Real values, ~position | From PPC/HEDNO press releases; ±200m position | Solar park, diesel plant      |
+| 3 – Modeled                | Estimated from published figures               | Demand zones, road congestion |
 
 Tier-3 data shows a `⚠ Estimated` badge in map popups.
 
@@ -73,6 +88,93 @@ All data in EPSG:4326 (WGS84 geographic). No UTM reprojection is needed at islan
 
 ---
 
-## ipoy/ — Island Energy System Modeling
+## ipoy/ — HEDNO Data Pipeline
 
-Placeholder only. Intended scope: yearly demand/load modeling, resilience scenario simulation (e.g., diesel-only baseline vs. high-solar + BESS vs. full EV integration). Not yet implemented.
+Downloads HEDNO PDFs and RAAEY XLS files, parses them into hourly and monthly CSVs, and runs QA checks. The hourly dataset is the foundation for a later scenario model (not yet implemented).
+
+### Quick start (full pipeline)
+
+```bash
+cd ipoy/
+bash scripts/run_all.sh   # creates .venv, installs deps, runs all 5 steps
+```
+
+### Manual setup
+
+```bash
+cd ipoy/
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Script reference and dependency order
+
+```
+01_download.py  →  03_parse_actual.py   }
+                   04_parse_forecast.py  }  →  06_qa.py
+                   05_parse_bulletins.py }
+```
+
+`02_inspect.py` is a dev tool — run manually before editing parsers.
+
+| Script                    | Purpose                                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| `01_download.py`        | Scrape HEDNO + bulletin pages; download PDFs + RAAEY XLS; write `data/raw/manifest.csv`           |
+| `02_inspect.py`         | Inspect a PDF's text, tables, and cell colours; render pages to PNG                                 |
+| `03_parse_actual.py`    | Parse yearly (2020–2024) and weekly (2025+) actual reports → `astypalea_hourly_actual.csv`      |
+| `04_parse_forecast.py`  | Parse forecast PDFs + RAAEY XLS → `astypalea_hourly_forecast.csv` + `astypalea_raaey_2024.csv` |
+| `05_parse_bulletins.py` | Extract ΑΣΤΥΠΑΛΑΙΑ rows from monthly bulletins → `astypalea_monthly_hedno.csv`         |
+| `06_qa.py`              | Coverage, sanity, bulletin comparison, RAAEY comparison; writes `QA_report.md` and 4 figures      |
+
+### Inspecting PDF layouts
+
+Run `02_inspect.py` on a real PDF before editing any parser. Results feed into `DATA_NOTES.md`.
+
+```bash
+# Text + tables for first 2 pages
+python scripts/02_inspect.py data/raw/hedno/yearly_actuals/<file>.pdf --pages 1-2 --tables
+
+# Coloured rectangles (for cell-background status detection in weekly files)
+python scripts/02_inspect.py data/raw/hedno/weekly_actuals/<file>.pdf --pages 1 --tables --rects
+
+# Render page 1 to PNG → data/processed/figures/<stem>_p1.png
+python scripts/02_inspect.py data/raw/hedno/weekly_actuals/<file>.pdf --render 1
+```
+
+### Key architecture decisions
+
+**Section classification** (`01_download.py:classify_section`): PDFs are classified by heading text found while traversing the page DOM. Four sections: `yearly_actuals`, `weekly_actuals`, `yearly_forecasts`, `weekly_forecasts`. PDFs where the header names another island are flagged `island_confirmed_in_header=N` in the manifest and skipped by parsers.
+
+**Two PDF formats in `03_parse_actual.py`**: yearly (wide: hours = columns, "Ζήτηση" row = demand) vs weekly (tall: hours = rows, "Πραγματικό Μέσο Ωριαίο Φορτίο" column = demand). `detect_format()` reads page 1 text to choose the branch.
+
+**Cell colour extraction** (`_cell_fill_color` / `_color_to_status` in `03_parse_actual.py`): pdfplumber rect fill colours encode unit status in weekly files (maintenance = yellow, fault = red). Exact RGB thresholds must be verified against real PDFs via `02_inspect.py --rects` before being set in `_color_to_status()`.
+
+**DST handling** (`utils.make_timestamps`): Athens timezone via pytz. Spring-forward non-existent hours get suffix `+LOCAL_NONEXISTENT` and empty UTC. Fall-back ambiguous hours get suffix `?DST_AMBIGUOUS`.
+
+**Greek number parsing** (`utils.parse_greek_number`): Greek locale uses dot for thousands and comma for decimal — `"1.234,56"` → `1234.56`.
+
+**Manifest caching**: `01_download.py` skips files already in `data/raw/` by checking `dest.exists()` and the manifest. Re-running is always safe.
+
+### Output files
+
+| File                                             | Description                                                                |
+| ------------------------------------------------ | -------------------------------------------------------------------------- |
+| `data/raw/manifest.csv`                        | Every downloaded file with URL, path, section, SHA256, island confirmation |
+| `data/processed/astypalea_hourly_actual.csv`   | One row per hour; `demand_mw` + unit on/off/status columns               |
+| `data/processed/astypalea_hourly_forecast.csv` | One row per hour; `forecast_demand_mw`                                   |
+| `data/processed/astypalea_monthly_hedno.csv`   | Monthly totals from bulletins                                              |
+| `data/processed/astypalea_raaey_2024.csv`      | RAAEY 2024 tender projections (load, PV, EV) in kW                         |
+| `data/processed/QA_report.md`                  | Coverage, sanity issues, bulletin comparison                               |
+| `data/processed/figures/`                      | Heatmaps, monthly energy, seasonal profiles, tender vs actual              |
+
+Full column definitions and open questions live in `DATA_NOTES.md`.
+
+### Gitignored
+
+`data/raw/` (all downloaded files). Small fixture PDFs committed to `tests/fixtures/` are the only exception.
+
+### Parser correctness rules
+
+- Never adjust a parser to match a bulletin. Parse what the PDF says; report gaps in `DATA_NOTES.md §3`.
+- If a column meaning is uncertain, record it as an open question — do not guess.
+- When changing a CSV column, update `DATA_NOTES.md §2` in the same commit.
