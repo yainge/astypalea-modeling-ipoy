@@ -16,6 +16,7 @@ Outputs:
 import csv
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
@@ -25,6 +26,13 @@ from utils import (
     DATA_PROCESSED, DATA_RAW,
     make_timestamps, parse_greek_number, setup_dirs, setup_logging,
 )
+
+
+def _strip_accents(s: str) -> str:
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    ).upper()
 
 log = setup_logging("parse_forecast")
 
@@ -54,7 +62,7 @@ _FORECAST_DEMAND_ROW_KEYWORD = "ΖΗΤΗΣΗ"   # same label as actuals in yearl
 
 def _find_forecast_col(header_row: list) -> int | None:
     for ci, cell in enumerate(header_row):
-        s = str(cell or "").upper()
+        s = _strip_accents(str(cell or ""))
         if any(kw in s for kw in _FORECAST_DEMAND_COL_KEYWORDS):
             return ci
     return None
@@ -98,7 +106,9 @@ def parse_forecast_page_weekly(
     for ri, row in enumerate(table):
         if ri == header_ri or not row:
             continue
-        m = _HOUR_RE.match(str(row[0] or "").strip())
+        # Col 1 is the time "HH:00"; col 0 is the rotated day label (DATA_NOTES §1d)
+        time_str = str(row[1] or "").strip() if len(row) > 1 else ""
+        m = _HOUR_RE.match(time_str)
         if not m:
             continue
         hour = int(m.group(1))
@@ -179,6 +189,7 @@ def parse_forecast_pdf(pdf_path: Path) -> list[dict]:
     _spec.loader.exec_module(_mod)
     detect_format = _mod.detect_format
     _extract_date_from_page_text = _mod._extract_date_from_page_text
+    _date_from_table_row0 = _mod._date_from_table_row0
 
     fmt = detect_format(pdf_path)
     records: list[dict] = []
@@ -187,11 +198,22 @@ def parse_forecast_pdf(pdf_path: Path) -> list[dict]:
     with pdfplumber.open(pdf_path) as pdf:
         for pi, page in enumerate(pdf.pages):
             text = page.extract_text() or ""
-            date_iso = _extract_date_from_page_text(text)
+            tables = page.extract_tables()
+
+            # Extract date from table row 0 first (Greek month words, DATA_NOTES §1d)
+            date_iso = None
+            for tdata in tables:
+                if tdata:
+                    d = _date_from_table_row0(tdata)
+                    if d:
+                        date_iso = d
+                        break
+            # Fallback: DD/MM/YYYY in page text
+            if not date_iso:
+                date_iso = _extract_date_from_page_text(text)
             if not date_iso:
                 continue
 
-            tables = page.extract_tables()
             for tdata in tables:
                 if fmt == "weekly":
                     recs = parse_forecast_page_weekly(tdata, date_iso, fname, pi)
@@ -232,16 +254,36 @@ def _raaey_timestamps(n_rows: int) -> list[tuple[str, str]]:
 
 
 def load_raaey_xls(xls_path: Path) -> pd.Series:
-    """Load a RAAEY single-column XLS and return a numeric Series."""
+    """Load a RAAEY wide-format XLS and return a numeric Series (8760 hourly values).
+
+    The file has one row per day and 24 hourly columns (01:00–24:00), with
+    two header rows (title + column labels) before the data.
+    """
     try:
         df = pd.read_excel(xls_path, header=None, engine="xlrd")
     except Exception:
         df = pd.read_excel(xls_path, header=None, engine="openpyxl")
 
-    # Drop any header-looking rows (non-numeric)
-    df = df.iloc[:, 0]
-    df = pd.to_numeric(df, errors="coerce").dropna().reset_index(drop=True)
-    return df
+    # Find the first numeric data row (after the title and header rows)
+    first_data = None
+    for i, row in df.iterrows():
+        # Data rows have a date-like value in col 0 and numbers in cols 1+
+        if pd.to_numeric(df.iloc[i, 1:], errors="coerce").notna().sum() >= 20:
+            first_data = i
+            break
+
+    if first_data is None:
+        log.warning(f"Could not locate data rows in {xls_path.name}")
+        return pd.Series(dtype=float)
+
+    # Hour columns are 1–24 (index cols 1 to 24)
+    hour_data = df.iloc[first_data:, 1:25]
+    hour_data = hour_data.apply(pd.to_numeric, errors="coerce")
+
+    # Flatten row-by-row: each row is one day, cols are hours 1–24
+    values = hour_data.values.flatten()
+    series = pd.Series(values).dropna().reset_index(drop=True)
+    return series
 
 
 def parse_raaey() -> list[dict]:

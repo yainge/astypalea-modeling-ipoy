@@ -57,8 +57,7 @@ def print_page_text(page, page_num: int) -> None:
 
 
 def print_tables(page, page_num: int) -> None:
-    finder = page.find_tables()
-    tables = finder.tables if finder else []
+    tables = page.find_tables()
     if not tables:
         print(f"\n  [PAGE {page_num + 1}] No tables found by pdfplumber")
         return

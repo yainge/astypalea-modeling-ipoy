@@ -11,7 +11,9 @@ Run again at any time: cached files are skipped (sha256 reused).
 """
 import csv
 import re
+import shutil
 import sys
+import unicodedata
 import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,18 +57,43 @@ RAAEY_FILES = {
 
 # ── Section classifier ─────────────────────────────────────────────────────────
 
+def _strip_accents(s: str) -> str:
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    ).upper()
+
+
+def classify_section_by_filename(fname: str) -> str:
+    """Classify a PDF by its filename stem (accent-insensitive).
+
+    Filename patterns (DATA_NOTES §1b, §1d):
+      *Απολογισμός-λειτουργίας* → weekly_actuals
+      *Προτεινόμενος-ΗΕΠ*       → weekly_forecasts
+      *Απολογισμοί*              → yearly_actuals   (plural)
+      *Προτεινόμενοι*            → yearly_forecasts (plural)
+    """
+    s = _strip_accents(fname)
+    if "ΑΠΟΛΟΓΙΣΜΟΣ-ΛΕΙΤΟΥΡΓΙΑΣ" in s or "ΑΠΟΛΟΓΙΣΜΟΣ ΛΕΙΤΟΥΡΓΙΑΣ" in s:
+        return "weekly_actuals"
+    if "ΠΡΟΤΕΙΝΟΜΕΝΟΣ-ΗΕΠ" in s or "ΠΡΟΤΕΙΝΟΜΕΝΟΣ ΗΕΠ" in s:
+        return "weekly_forecasts"
+    if "ΑΠΟΛΟΓΙΣΜΟΙ" in s:
+        return "yearly_actuals"
+    if "ΠΡΟΤΕΙΝΟΜΕΝΟΙ" in s:
+        return "yearly_forecasts"
+    return "unknown"
+
+
 def classify_section(heading: str) -> str:
-    """Map a heading string to one of the four HEDNO sections."""
+    """Heading-based section classifier (fallback; filename takes priority)."""
     h = heading.lower()
-    # Weekly forecasts: "Προτεινόμενος-ΗΕΠ" — check before plain "Προτεινόμεν"
     if "ηεπ" in h or ("προτεινόμενος" in h and re.search(r"\d", h)):
         return "weekly_forecasts"
     if "προτεινόμεν" in h:
         return "yearly_forecasts"
-    # Weekly actuals: "Απολογισμός λειτουργίας" (has date range)
     if "λειτουργίας" in h or "λειτουρ" in h:
         return "weekly_actuals"
-    # Yearly actuals: "Απολογισμοί" (plural)
     if "απολογισμ" in h:
         return "yearly_actuals"
     return "unknown"
@@ -114,7 +141,10 @@ def scrape_hedno_pdf_links(session: RateLimitedSession, page_url: str) -> list[t
                 continue
             # Accept .pdf links anywhere on deddie.gr
             if href.lower().endswith(".pdf") and "deddie.gr" in href:
-                results.append((href, current_section, current_heading))
+                fname = urllib.parse.unquote(href.split("/")[-1])
+                file_sec = classify_section_by_filename(fname)
+                sec = file_sec if file_sec != "unknown" else current_section
+                results.append((href, sec, current_heading))
 
     log.info(f"  → {len(results)} PDF links, sections: "
              f"{set(s for _, s, _ in results)}")
@@ -227,12 +257,62 @@ def save_manifest(rows: list[dict], path: Path) -> None:
         w.writerows(rows)
 
 
+# ── Migration ──────────────────────────────────────────────────────────────────
+
+def migrate_unknown_files(manifest_path: Path) -> None:
+    """Move files from hedno/unknown/ to the correct section directories.
+
+    Also updates the manifest to reflect the new paths and sections.
+    Called once at the start of main(); safe to call repeatedly.
+    """
+    unknown_dir = DATA_RAW / "hedno" / "unknown"
+    if not unknown_dir.exists():
+        return
+
+    existing = load_manifest(manifest_path)
+    updated_rows = {url: dict(row) for url, row in existing.items()}
+    moved = 0
+
+    for f in sorted(unknown_dir.iterdir()):
+        if not f.is_file():
+            continue
+        section = classify_section_by_filename(f.name)
+        if section == "unknown":
+            continue  # leave other-island files in unknown/
+
+        dest_dir = DATA_RAW / "hedno" / section
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / f.name
+
+        if dest.exists():
+            f.unlink()  # duplicate; remove the unknown/ copy
+            log.info(f"  Removed duplicate {f.name} from unknown/")
+        else:
+            shutil.move(str(f), str(dest))
+            log.info(f"  Migrated {f.name} → hedno/{section}/")
+        moved += 1
+
+        # Update manifest entry: find row by matching filename in local_path
+        for url, row in updated_rows.items():
+            lp = row.get("local_path", "")
+            if lp.endswith(f.name) and "unknown" in lp:
+                new_rel = dest.relative_to(DATA_RAW.parent.parent)
+                updated_rows[url]["local_path"] = str(new_rel)
+                updated_rows[url]["section"] = section
+                break
+
+    if moved and existing:
+        save_manifest(list(updated_rows.values()), manifest_path)
+        log.info(f"  Migration complete: {moved} files moved, manifest updated")
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     setup_dirs()
-    session = RateLimitedSession()
     manifest_path = DATA_RAW / "manifest.csv"
+    migrate_unknown_files(manifest_path)
+    session = RateLimitedSession()
     existing = load_manifest(manifest_path)
 
     # Collect all (url, section, heading) triples

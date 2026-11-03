@@ -23,6 +23,7 @@ One row per hour:
 import csv
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
@@ -39,27 +40,27 @@ log = setup_logging("parse_actual")
 UNIT_NAMES = ("G5", "G6", "G7", "G8")
 
 OUTPUT_COLS = [
-    "timestamp_local", "timestamp_utc", "demand_mw",
+    "timestamp_local", "timestamp_utc", "demand_mw", "demand_flag",
     "G5_on", "G6_on", "G7_on", "G8_on", "units_on_count",
     "G5_status", "G6_status", "G7_status", "G8_status",
     "G5_raw", "G6_raw", "G7_raw", "G8_raw",
+    "G5_fill", "G6_fill", "G7_fill", "G8_fill",
     "source_file", "page", "remark",
 ]
 
 # ── Format detection ───────────────────────────────────────────────────────────
 
 def detect_format(pdf_path: Path) -> str:
-    """Return 'yearly' or 'weekly' by reading page 1 text."""
+    """Return 'yearly' or 'weekly' by reading page 1 text (accent-insensitive)."""
     try:
         with pdfplumber.open(pdf_path) as pdf:
-            text = (pdf.pages[0].extract_text() or "").upper()
+            text = _strip_accents(pdf.pages[0].extract_text() or "")
             if "ΠΡΑΓΜΑΤΙΚΟ ΜΕΣΟ ΩΡΙΑΙΟ" in text or "ΑΠΟΔΙΔΟΜΕΝΗ ΙΣΧΥΣ" in text:
                 return "weekly"
             if "ΖΗΤΗΣΗ" in text or "ΑΠΟΛΟΓΙΣΤΙΚΗ ΛΕΙΤΟΥΡΓΙΑ" in text:
                 return "yearly"
-            # Check more pages
             for pg in pdf.pages[1:3]:
-                t = (pg.extract_text() or "").upper()
+                t = _strip_accents(pg.extract_text() or "")
                 if "ΠΡΑΓΜΑΤΙΚΟ ΜΕΣΟ ΩΡΙΑΙΟ" in t:
                     return "weekly"
                 if "ΖΗΤΗΣΗ" in t:
@@ -86,32 +87,28 @@ def _cell_fill_color(page, cell_bbox: tuple) -> tuple | None:
     return None
 
 
-def _color_to_status(color: tuple | None) -> str:
-    """Map a fill color tuple to a unit status label.
+def _strip_accents(s: str) -> str:
+    """Remove combining accent marks and return uppercase; used for Greek date parsing."""
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    ).upper()
 
-    Yellow/orange-ish → maintenance (συντήρηση).
-    Red-ish           → fault (βλάβη).
-    Otherwise         → unknown_color:<hex>.
-    Colors are CMYK or RGB tuples from pdfplumber.
-    Actual thresholds MUST be verified against the real PDFs via 02_inspect.py.
-    """
+
+def _color_to_hex(color: tuple | None) -> str | None:
+    """Convert a pdfplumber fill-color tuple to a CSS hex string, or None if no fill."""
     if color is None:
-        return "on"
-    # Normalise to RGB 0-1 scale
+        return None
     if len(color) == 4:  # CMYK → approximate RGB
         c, m, y, k = color
         r = (1 - c) * (1 - k)
         g = (1 - m) * (1 - k)
         b = (1 - y) * (1 - k)
+    elif len(color) == 1:  # grayscale
+        r = g = b = float(color[0])
     else:
-        r, g, b = (color + (0,))[:3]
-
-    if r > 0.8 and g > 0.6 and b < 0.3:
-        return "maintenance"  # yellow/orange
-    if r > 0.7 and g < 0.35 and b < 0.35:
-        return "fault"        # red
-    hex_str = f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
-    return f"unknown_color:{hex_str}"
+        r, g, b = (list(color) + [0.0, 0.0])[:3]
+    return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
 
 
 # ── YEARLY format parser ───────────────────────────────────────────────────────
@@ -214,43 +211,50 @@ def parse_day_table_yearly(
         unit_on: dict[str, int | None] = {}
         unit_status: dict[str, str] = {}
         unit_raw: dict[str, str] = {}
+        unit_fill: dict[str, str | None] = {}
 
         for name, row_idx in unit_row_indices.items():
             raw = str(table[row_idx][col_idx] or "").strip()
             unit_raw[name] = raw
-            raw_upper = raw.upper()
 
-            # Determine running state from text
+            # Determine running state from text (yearly format uses "1" / "Διαθέσιμη")
+            raw_up = _strip_accents(raw)
             if raw == "1":
                 on_val = 1
-            elif "ΔΙΑΘ" in raw_upper:      # Διαθέσιμη
+                status = "on"
+            elif "ΔΙΑΘ" in raw_up:
                 on_val = 0
+                status = "available"
             elif raw in ("", "∅"):
                 on_val = None
+                status = "unknown"
             else:
-                on_val = None  # "b", colored-only, unknown
+                on_val = None
+                status = "unknown"
 
-            # Try to refine via cell color
-            status = "on" if on_val == 1 else ("available" if on_val == 0 else "unknown")
+            # Store fill hex; don't use for status
+            fill_hex = None
             if page is not None and table_obj is not None:
                 bbox = cell_bboxes.get((row_idx, col_idx))
                 if bbox:
-                    color = _cell_fill_color(page, bbox)
-                    if color is not None:
-                        status = _color_to_status(color)
-                        if on_val is None:
-                            on_val = 0  # colored cell → not running
+                    fill_hex = _color_to_hex(_cell_fill_color(page, bbox))
 
             unit_on[name] = on_val
             unit_status[name] = status
+            unit_fill[name] = fill_hex
 
         on_count = sum(v for v in unit_on.values() if v == 1)
 
         ts_local, ts_utc = make_timestamps(date_iso, hour)
+        demand_flag = None
+        if "+LOCAL_NONEXISTENT" in ts_local:
+            demand_flag = "dst_placeholder"
+            demand_val = None
         rows.append({
             "timestamp_local": ts_local,
             "timestamp_utc": ts_utc,
             "demand_mw": demand_val,
+            "demand_flag": demand_flag,
             "G5_on": unit_on.get("G5"),
             "G6_on": unit_on.get("G6"),
             "G7_on": unit_on.get("G7"),
@@ -264,6 +268,10 @@ def parse_day_table_yearly(
             "G6_raw": unit_raw.get("G6", ""),
             "G7_raw": unit_raw.get("G7", ""),
             "G8_raw": unit_raw.get("G8", ""),
+            "G5_fill": unit_fill.get("G5"),
+            "G6_fill": unit_fill.get("G6"),
+            "G7_fill": unit_fill.get("G7"),
+            "G8_fill": unit_fill.get("G8"),
             "source_file": source_file,
             "page": page_num + 1,
             "remark": remark,
@@ -272,8 +280,15 @@ def parse_day_table_yearly(
     return rows
 
 
+_MONTH_GR_STEMS = {
+    "ΙΑΝΟΥ": 1, "ΦΕΒ": 2, "ΜΑΡΤ": 3, "ΑΠΡΙ": 4, "ΜΑΪΟ": 5, "ΜΑΙ": 5,
+    "ΙΟΥΝ": 6, "ΙΟΥΛ": 7, "ΑΥΓΟ": 8, "ΣΕΠΤ": 9, "ΟΚΤΩ": 10, "ΝΟΕΜ": 11,
+    "ΔΕΚΕ": 12,
+}
+
+
 def _extract_date_from_page_text(text: str) -> str | None:
-    """Extract date from a page's free text (weekday + DD/MM/YYYY pattern)."""
+    """Extract date from a page's free text (DD/MM/YYYY pattern)."""
     for m in _DATE_IN_HEADER.finditer(text):
         d, mo, y = m.group(1), m.group(2), m.group(3)
         try:
@@ -285,22 +300,89 @@ def _extract_date_from_page_text(text: str) -> str | None:
     return None
 
 
+def _parse_greek_date_text(text: str) -> str | None:
+    """Parse 'Τρίτη, 2 Δεκεμβρίου 2025' or similar → '2025-12-02'.
+
+    Uses accent-stripped matching for month names.
+    """
+    from datetime import date as _date
+
+    text_norm = _strip_accents(text)
+
+    m_year = re.search(r"\b(20\d{2})\b", text)
+    if not m_year:
+        return None
+    year = int(m_year.group(1))
+
+    # Day number: first 1-2 digit number that isn't a year
+    day = None
+    for m in re.finditer(r"\b(\d{1,2})\b", text):
+        d = int(m.group(1))
+        if 1 <= d <= 31:
+            day = d
+            break
+    if day is None:
+        return None
+
+    month = None
+    for stem, mo in _MONTH_GR_STEMS.items():
+        if stem in text_norm:
+            month = mo
+            break
+    if month is None:
+        return None
+
+    try:
+        return _date(year, month, day).isoformat()
+    except ValueError:
+        return None
+
+
+def _date_from_table_row0(table: list[list]) -> str | None:
+    """Extract date from row 0 of a weekly table (col 2 typically holds the Greek date)."""
+    if not table or not table[0]:
+        return None
+    row0 = table[0]
+    # Try col 2 first (per DATA_NOTES §1b), then all cells in row 0
+    candidates = []
+    if len(row0) > 2 and row0[2]:
+        candidates.append(str(row0[2]))
+    candidates.extend(str(c) for c in row0 if c and str(c) not in candidates)
+    for cell_text in candidates:
+        d = _parse_greek_date_text(cell_text)
+        if d:
+            return d
+    return None
+
+
 def _extract_remarks(text: str, date_iso: str | None) -> str:
-    """Extract free-text remarks after the table (e.g. supply interruption notes)."""
+    """Extract free-text remarks from page text (after table rows, before legend)."""
     lines = text.split("\n")
     remark_lines = []
-    in_remark = False
+    past_last_hour = False
+
     for line in lines:
         ln = line.strip()
         if not ln:
             continue
-        # Heuristic: remarks appear after a blank-ish section, often start with
-        # Greek words describing an event or time range
-        if re.search(r"\d{2}:\d{2}", ln) and re.search(r"[Δδ]ιακοπ|εργασ|συντήρ|βλάβ", ln, re.I):
-            in_remark = True
-        if in_remark:
+        # Detect when we've passed the last hour row (22:00 or 23:00)
+        if re.match(r"^2[23]:00", ln):
+            past_last_hour = True
+            continue
+        # Skip other time rows
+        if re.match(r"^\d{1,2}:\d{2}", ln):
+            continue
+        # Stop at legend
+        if any(kw in _strip_accents(ln) for kw in ("ΜΗ ΔΙΑΘΕΣΙΜΟΤ", "ΣΥΝΤΗΡΗΣ", "ΛΟΓΩ ΒΛΑΒ")):
+            break
+        if past_last_hour:
             remark_lines.append(ln)
-    return " | ".join(remark_lines)
+        elif re.search(r"\d{2}:\d{2}", ln) and re.search(
+            r"[Δδ]ιακοπ|εργασ|συντήρ|βλάβ|ΒΛΑΒ|ΕΡΓΑΣ", ln
+        ):
+            remark_lines.append(ln)
+
+    return " | ".join(remark_lines) if remark_lines else ""
 
 
 def parse_pdf_yearly(pdf_path: Path) -> list[dict]:
@@ -324,8 +406,7 @@ def parse_pdf_yearly(pdf_path: Path) -> list[dict]:
 
             remark = _extract_remarks(text, date_iso)
 
-            finder = page.find_tables()
-            tables_objs = finder.tables if finder else []
+            tables_objs = page.find_tables()
             tables_data = [t.extract() for t in tables_objs]
 
             if not tables_data:
@@ -378,11 +459,13 @@ def parse_day_text_yearly(
                     "timestamp_local": ts_local,
                     "timestamp_utc": ts_utc,
                     "demand_mw": values[hour],
+                    "demand_flag": None,
                     "G5_on": None, "G6_on": None, "G7_on": None, "G8_on": None,
                     "units_on_count": None,
                     "G5_status": "unknown", "G6_status": "unknown",
                     "G7_status": "unknown", "G8_status": "unknown",
                     "G5_raw": "", "G6_raw": "", "G7_raw": "", "G8_raw": "",
+                    "G5_fill": None, "G6_fill": None, "G7_fill": None, "G8_fill": None,
                     "source_file": source_file, "page": page_num + 1,
                     "remark": remark + " [text-fallback]",
                 })
@@ -393,7 +476,7 @@ def parse_day_text_yearly(
 # ── WEEKLY format parser ───────────────────────────────────────────────────────
 
 _HOUR_ROW_RE = re.compile(r"^(\d{1,2}):00")   # "00:00", "1:00", …
-_DEMAND_COL_KEYWORDS = ("ΠΡΑΓΜΑΤΙΚΟ ΜΕΣΟ", "ΜΕΣΟ ΩΡΙΑΙΟ", "ΦΟΡΤΙΟ")
+_DEMAND_COL_KEYWORDS = ("ΠΡΑΓΜΑΤΙΚΟ ΜΕΣΟ", "ΜΕΣΟ ΩΡΙΑΙΟ", "ΦΟΡΤΙΟ")  # compared after _strip_accents
 _UNIT_COL_RE = re.compile(r"\b(G[5-8])\b", re.IGNORECASE)
 
 
@@ -401,7 +484,7 @@ def _find_column_indices(header_row: list) -> dict[str, int]:
     """Return mapping name→col-index for demand and units from a weekly table header."""
     result: dict[str, int] = {}
     for ci, cell in enumerate(header_row):
-        s = str(cell or "").upper()
+        s = _strip_accents(str(cell or ""))
         if any(kw in s for kw in _DEMAND_COL_KEYWORDS):
             result["demand"] = ci
         for name in UNIT_NAMES:
@@ -454,8 +537,8 @@ def parse_day_table_weekly(
             continue
         if not row:
             continue
-        # First cell should be a time like "00:00"
-        time_cell = str(row[0] or "").strip()
+        # Col 1 is the time "HH:00"; col 0 is the rotated day label (DATA_NOTES §1b)
+        time_cell = str(row[1] or "").strip() if len(row) > 1 else ""
         m = _HOUR_ROW_RE.match(time_cell)
         if not m:
             continue
@@ -463,53 +546,77 @@ def parse_day_table_weekly(
         if not 0 <= hour <= 23:
             continue
 
-        demand_val = parse_greek_number(str(row[col_map["demand"]] or ""))
+        raw_demand_str = str(row[col_map["demand"]] or "")
+        demand_val = parse_greek_number(raw_demand_str)
+        demand_flag = None
+
+        # Q7: values without a decimal separator produce implausible MW readings
+        if demand_val is not None and not (0.0 <= demand_val <= 5.0):
+            log.warning(
+                f"  Load {demand_val} MW outside 0–5 MW on {date_iso} "
+                f"hour {hour:02d}:00 in {source_file} (flagged no_decimal_separator)"
+            )
+            demand_flag = "no_decimal_separator"
+            demand_val = None
 
         unit_on: dict[str, int | None] = {}
         unit_status: dict[str, str] = {}
         unit_raw: dict[str, str] = {}
+        unit_fill: dict[str, str | None] = {}
 
         for name in UNIT_NAMES:
             if name not in col_map:
                 unit_on[name] = None
                 unit_status[name] = "unknown"
                 unit_raw[name] = ""
+                unit_fill[name] = None
                 continue
 
             ci = col_map[name]
             raw = str(row[ci] or "").strip()
             unit_raw[name] = raw
-            raw_up = raw.upper()
 
+            # Status from letter only (DATA_NOTES Q2: S/s = maintenance_likely, B/b = fault_likely)
             if raw == "1":
                 on_val: int | None = 1
-            elif raw in ("b", "B"):
-                on_val = None   # meaning unknown, see DATA_NOTES
+                status = "on"
             elif raw in ("", "∅"):
                 on_val = 0
+                status = "available"
+            elif raw.upper() == "S":
+                on_val = 0
+                status = "maintenance_likely"
+            elif raw.upper() == "B":
+                on_val = 0
+                status = "fault_likely"
             else:
                 on_val = None
+                status = "unknown"
 
-            status = "on" if on_val == 1 else ("available" if on_val == 0 else "unknown")
+            # Extract fill hex and store; do not use for status derivation
+            fill_hex = None
             if page is not None and table_obj is not None:
                 bbox = cell_bboxes.get((ri, ci))
                 if bbox:
-                    color = _cell_fill_color(page, bbox)
-                    if color is not None:
-                        status = _color_to_status(color)
-                        if on_val is None:
-                            on_val = 0
+                    fill_hex = _color_to_hex(_cell_fill_color(page, bbox))
 
             unit_on[name] = on_val
             unit_status[name] = status
+            unit_fill[name] = fill_hex
 
         on_count = sum(v for v in unit_on.values() if v == 1)
         ts_local, ts_utc = make_timestamps(date_iso, hour)
+
+        # Q6: DST spring-forward placeholder row — the PDF prints 03:00 with zero load
+        if "+LOCAL_NONEXISTENT" in ts_local:
+            demand_flag = "dst_placeholder"
+            demand_val = None
 
         rows.append({
             "timestamp_local": ts_local,
             "timestamp_utc": ts_utc,
             "demand_mw": demand_val,
+            "demand_flag": demand_flag,
             "G5_on": unit_on.get("G5"),
             "G6_on": unit_on.get("G6"),
             "G7_on": unit_on.get("G7"),
@@ -523,6 +630,10 @@ def parse_day_table_weekly(
             "G6_raw": unit_raw.get("G6", ""),
             "G7_raw": unit_raw.get("G7", ""),
             "G8_raw": unit_raw.get("G8", ""),
+            "G5_fill": unit_fill.get("G5"),
+            "G6_fill": unit_fill.get("G6"),
+            "G7_fill": unit_fill.get("G7"),
+            "G8_fill": unit_fill.get("G8"),
             "source_file": source_file,
             "page": page_num + 1,
             "remark": remark,
@@ -569,12 +680,21 @@ def parse_pdf_weekly(pdf_path: Path) -> list[dict]:
     with pdfplumber.open(pdf_path) as pdf:
         for pi, page in enumerate(pdf.pages):
             text = page.extract_text() or ""
+            tables_objs = page.find_tables()  # pdfplumber 0.11.x returns list directly
 
-            dates_on_page = _extract_week_dates(text)
-            if not dates_on_page:
+            # Extract date from table row 0 (Greek month words, col 2 per DATA_NOTES §1b)
+            date_iso = None
+            for tobj in tables_objs:
+                tdata = tobj.extract()
+                if tdata:
+                    d = _date_from_table_row0(tdata)
+                    if d:
+                        date_iso = d
+                        break
+
+            # Fallback: filename date-range offset
+            if date_iso is None:
                 date_iso = _guess_date_for_page(pdf_path, pi, [])
-            else:
-                date_iso = dates_on_page[0]  # first date found on this page
 
             if date_iso is None:
                 log.warning(f"  No date on page {pi + 1} of {fname}; skipping")
@@ -582,12 +702,9 @@ def parse_pdf_weekly(pdf_path: Path) -> list[dict]:
 
             remark = _extract_remarks(text, date_iso)
 
-            finder = page.find_tables()
-            tables_objs = finder.tables if finder else []
-            tables_data = [t.extract() for t in tables_objs]
-
             parsed_any = False
-            for tdata, tobj in zip(tables_data, tables_objs):
+            for tobj in tables_objs:
+                tdata = tobj.extract()
                 day_rows = parse_day_table_weekly(
                     tdata, date_iso, fname, pi, remark,
                     page=page, table_obj=tobj,

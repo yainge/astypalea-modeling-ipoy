@@ -40,8 +40,8 @@ def load_actual() -> pd.DataFrame:
     df = pd.read_csv(p, low_memory=False)
     # Parse timestamps (strip DST annotation suffixes before converting)
     df["ts"] = pd.to_datetime(
-        df["timestamp_local"].str.split("?").str[0].str.split("+LOCAL").str[0],
-        errors="coerce"
+        df["timestamp_local"].str.split("?", regex=False).str[0].str.split("+LOCAL", regex=False).str[0],
+        utc=True, errors="coerce"
     )
     df = df.dropna(subset=["ts"]).copy()
     df["year"] = df["ts"].dt.year
@@ -58,7 +58,7 @@ def load_monthly() -> pd.DataFrame:
         return pd.DataFrame()
     df = pd.read_csv(p)
     for col in ("thermal_gen_mwh", "res_gen_mwh", "total_gen_mwh",
-                 "res_share_pct", "avg_prod_cost_eur_mwh", "peak_load_mw"):
+                 "res_share_pct", "avg_prod_cost_eur_mwh", "peak_load_mw_2024"):
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
@@ -69,8 +69,8 @@ def load_raaey() -> pd.DataFrame:
         return pd.DataFrame()
     df = pd.read_csv(p)
     df["ts"] = pd.to_datetime(
-        df["timestamp_local"].str.split("?").str[0].str.split("+LOCAL").str[0],
-        errors="coerce"
+        df["timestamp_local"].str.split("?", regex=False).str[0].str.split("+LOCAL", regex=False).str[0],
+        utc=True, errors="coerce"
     )
     df = df.dropna(subset=["ts"]).copy()
     for col in ("load_kw", "pv_gen_kw", "ev_demand_kw"):
