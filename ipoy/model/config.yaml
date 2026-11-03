@@ -1,0 +1,120 @@
+# config.yaml — Stage 0 unit commitment model parameters
+#
+# Every parameter that is not directly from HEDNO data carries:
+#   status: assumption   — must be confirmed before using results as engineering inputs
+#   status: verified     — traced to a source document
+#
+# Open questions from DATA_NOTES.md are referenced inline (Q1, Q2, etc.)
+
+generators:
+  # G5, G6, G7, G8 — all modelled as identical Mitsubishi S16R-PTA units.
+  # The model assigns unit commitment to any of them; identity does not matter
+  # because they are indistinguishable in the HEDNO data (counts only).
+
+  p_nom:
+    value: 1.1
+    unit: MW
+    source: "HEDNO weekly PDF row 1 (Αποδιδόμενη Ισχύς 1,100 MW), DATA_NOTES §1b"
+    status: verified
+
+  p_min_pu:
+    # Minimum stable load as a fraction of rated power.
+    # Typical diesel gensets of this class: 25–40 %.  30 % is a mid-range estimate.
+    # The exact Mitsubishi S16R-PTA value is not confirmed for Astypalea.
+    value: 0.30
+    unit: "fraction of p_nom"
+    source: "Mitsubishi S16R-PTA datasheet (not confirmed for Astypalea units); placeholder"
+    status: assumption
+
+  min_up_time:
+    # Minimum hours the unit must stay online once started.
+    # 1 h is the coarsest feasible value at 1-h resolution; real value may be shorter.
+    value: 1
+    unit: hours
+    source: "placeholder — typical for diesel genset ~1 MW class"
+    status: assumption
+
+  min_down_time:
+    # Minimum hours the unit must stay offline after shutdown.
+    value: 1
+    unit: hours
+    source: "placeholder — typical for diesel genset ~1 MW class"
+    status: assumption
+
+  start_up_cost:
+    # One-time cost incurred each time a unit starts.
+    # Order-of-magnitude estimate; exact figure depends on fuel consumed during warm-up.
+    value: 10.0
+    unit: EUR
+    source: "placeholder — order-of-magnitude for ~1 MW diesel warm-up fuel"
+    status: assumption
+
+  marginal_cost:
+    # Variable cost per MWh of generation (fuel + variable O&M).
+    # Bulletin ΜΜΚ_ΜΔΝ (average variable cost) ranges 295–515 EUR/MWh across 2025 months.
+    # A midpoint is used; it does not account for part-load efficiency variation.
+    # See DATA_NOTES Q9 for meaning of ΜΜΚ.
+    value: 350.0
+    unit: EUR/MWh
+    source: "HEDNO bulletin Table 12 ΜΜΚ_ΜΔΝ, DATA_NOTES §1e, Q9 — midpoint of 2025 range"
+    status: assumption
+
+pv:
+  # Existing PV installation (pre-2022, pre-hybrid project).
+  # Only used when load_basis = 'gross'.
+
+  p_nom:
+    value: 0.32
+    unit: MW
+    source: "HEDNO bulletin Table 3, DATA_NOTES §1e — 0.32 MW confirmed in all three verified bulletins"
+    status: verified
+
+  pvgis_lat: 36.578
+  pvgis_lon: 26.390
+  # PVGIS SARAH3 grid coverage: the island centroid (36.5533, 26.3617) returns "over sea".
+  # This northern point is the only confirmed on-land grid cell (tested 2026-11-03).
+  # PVGIS grid resolution is ~0.05°; irradiance difference within the island is negligible.
+  pvgis_loss:
+    # System losses (wiring, inverter, etc.) as used in PVGIS seriescalc.
+    value: 14
+    unit: "%"
+    source: "PVGIS v5.2 default system loss"
+    status: assumption
+
+  pvgis_year: 2020
+  # Single representative year downloaded from PVGIS SARAH3.
+  # PVGIS v5.2 seriescalc supports years 2005–2020; 2020 is the most recent available.
+  # Used to derive a typical monthly×hourly p_max_pu profile applied across the model window.
+  # A single year is an approximation; inter-annual variability is not captured.
+
+model_window:
+  start: "2025-09-16"   # first day of available weekly actuals data
+  end: "2026-09-01"     # exclusive; first day outside the Sep 2025 – Aug 2026 window
+
+reserve_variants:
+  A:
+    description: >
+      No reserve constraint. Optimizer commits the minimum number of units to meet the load
+      subject to unit commitment constraints (min stable load, min up/down time).
+
+  B:
+    description: >
+      N-1 spinning reserve: total online capacity must cover load plus the capacity of the
+      largest online unit (1.1 MW). Equivalent to: sum(status * p_nom) >= load + 1.1.
+
+  C:
+    margins: [0.2, 0.5, 1.0]
+    description: >
+      Fractional spinning reserve: total online capacity must be at least load × (1 + r)
+      for r in margins. Variants C_020, C_050, C_100 correspond to 20 %, 50 %, 100 % margins.
+
+letter_avail:
+  # How to treat cells in G5–G8 columns that carry status='maintenance' or 'fault'
+  # (these are the grey/dark-coloured cells that also carry letter raw values S/B/s/b).
+  # See DATA_NOTES Q2, Q8.
+  #
+  # 'unavailable': maintenance and fault cells → p_max_pu = 0 for that unit-hour.
+  #   The unit cannot be committed by the optimiser.  This is the "likely" reading per Q2.
+  # 'ignored':     maintenance and fault cells are disregarded; unit is treated as available.
+  #   Tests whether HEDNO's maintenance schedule is the binding constraint.
+  values: ["unavailable", "ignored"]

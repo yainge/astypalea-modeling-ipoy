@@ -1,0 +1,5 @@
+data/
+results/*.parquet
+__pycache__/
+*.pyc
+tests/__pycache__/
